@@ -573,19 +573,25 @@ function cmShowPortfolio(selected) {
  }
  function openLocal(image){if(!build||!image)return;if(!dialog)build();previousFocus=image;large.src=image.currentSrc||image.src;large.alt=image.alt||'포트폴리오 사진';var label=image.parentElement.querySelector('p');caption.textContent=label?label.textContent:image.alt||'';if(!dialog.open)dialog.showModal();}
 
- var request=0,pending=null;
+ var request=0,pending=null,status=null;
  window.addEventListener('message',function(event){
   if(event.source!==window.parent||!['https://artmug.kr','https://www.artmug.kr'].includes(event.origin))return;
-  if(event.data&&event.data.type==='ringo-photo-accepted'&&pending&&event.data.request===pending.id){clearTimeout(pending.timer);pending=null;}
+  if(event.data&&event.data.type==='ringo-photo-accepted'&&pending&&event.data.request===pending.id){clearTimeout(pending.timer);pending=null;if(status)status.remove();status=null;}
   if(event.data&&event.data.type==='ringo-photo-closed'&&previousFocus&&previousFocus.isConnected)previousFocus.focus({preventScroll:true});
  });
  function open(image){
   if(window.parent===window){openLocal(image);return;}
   previousFocus=image;var label=image.parentElement.querySelector('p'),id=++request;
   if(pending)clearTimeout(pending.timer);
-  pending={id:id,timer:setTimeout(function(){if(pending&&pending.id===id){pending=null;openLocal(image);}},800)};
   var message={type:'ringo-photo-open',request:id,src:image.currentSrc||image.src,caption:label?label.textContent:image.alt||''};
-  window.parent.postMessage(message,'https://artmug.kr');window.parent.postMessage(message,'https://www.artmug.kr');
+  pending={id:id,timer:null};var attempts=0;
+  function send(){
+   if(!pending||pending.id!==id)return;
+   if(attempts>=3){pending=null;if(status)status.remove();status=document.createElement('p');status.setAttribute('role','status');status.textContent='확대창 연결을 확인하지 못했습니다. 페이지를 새로고침한 뒤 다시 눌러 주세요.';status.style.cssText='margin:8px 12px;color:#397C9F;text-align:center;font-size:12px;';image.parentElement.appendChild(status);return;}
+   attempts++;pending.timer=setTimeout(send,1200);
+   window.parent.postMessage(message,'https://artmug.kr');window.parent.postMessage(message,'https://www.artmug.kr');
+  }
+  send();
  }
  root.addEventListener('click',function(e){var image=photo(e.target);if(image)open(image);});
  root.addEventListener('keydown',function(e){var image=photo(e.target);if(image&&(e.key==='Enter'||e.key===' ')){e.preventDefault();open(image);}});
