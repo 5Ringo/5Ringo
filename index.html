@@ -529,4 +529,37 @@ function setupSmoothPortfolio(gallery,buttons){
  root.addEventListener('keydown',function(e){var image=photo(e.target);if(image&&(e.key==='Enter'||e.key===' ')){e.preventDefault();open(image);}});
 })();
 </script>
+
+<script>
+(function(){
+ if(window.parent===window)return;
+ var root=document.getElementById('cm-root');if(!root)return;
+ var queued=false,forceNext=false,lastHeight=0;
+ function send(){
+  queued=false;
+  var style=getComputedStyle(document.body);
+  // Measure the content itself so the current iframe height cannot prevent shrinking.
+  var height=Math.ceil(root.getBoundingClientRect().bottom+window.scrollY+(parseFloat(style.paddingBottom)||0)+(parseFloat(style.marginBottom)||0));
+  height=Math.max(200,height);
+  if(!forceNext&&height===lastHeight)return;forceNext=false;lastHeight=height;
+  var message={type:'ringo-content-height',height:height};
+  window.parent.postMessage(message,'https://artmug.kr');window.parent.postMessage(message,'https://www.artmug.kr');
+ }
+ function schedule(force){if(force===true)forceNext=true;if(queued)return;queued=true;requestAnimationFrame(send);}
+ if(typeof ResizeObserver!=='undefined')new ResizeObserver(function(){schedule();}).observe(root);
+ window.addEventListener('resize',function(){schedule();});
+ window.addEventListener('load',function(){schedule(true);});
+ root.addEventListener('load',function(){schedule();},true);
+ function recheck(){schedule();[80,240,480,900].forEach(function(delay){setTimeout(function(){schedule();},delay);});}
+ root.addEventListener('toggle',recheck,true);
+ root.addEventListener('click',recheck,true);
+ root.addEventListener('change',recheck,true);
+ root.addEventListener('input',recheck,true);
+ if(typeof MutationObserver!=='undefined')new MutationObserver(function(){schedule();}).observe(root,{childList:true,subtree:true,attributes:true,attributeFilter:['open','hidden']});
+ window.addEventListener('message',function(event){if(event.source===window.parent&&['https://artmug.kr','https://www.artmug.kr'].includes(event.origin)&&event.data&&event.data.type==='ringo-height-request')schedule(true);});
+ if(document.fonts&&document.fonts.ready)document.fonts.ready.then(function(){schedule();});
+ schedule(true);
+})();
+
+</script>
 </body></html>
